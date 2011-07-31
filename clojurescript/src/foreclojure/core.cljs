@@ -9,34 +9,33 @@
 (def confirm (js* "confirm"))
 
 (defn js-map
-  "makes a javascript map from a clojure one"
-  ; TODO make it possible to use keywords as keys
-  ; TODO make this work recursively, with vectors/lists transformed to javascript arrays
+  "recursively converts a map/vector (containing other maps or vectors as values)
+  to a javascript object/array"
   [cljmap]
-  (let  [out (js-obj)]
-    (doall
-      (map #(aset out
-                  (name (first %)) (second %))
-           cljmap))
-    out))
+  (cond (vector? cljmap) (apply array (map js-map cljmap))
+        (map? cljmap) (let [out (js-obj)
+                            mapf #(aset out (name (first %)) (js-map (second %)))]
+                        (doall (map mapf cljmap))
+                        out)
+        true cljmap))
 
 (defn configure-data-tables []
   (let [problem-table ($ "#problem-table")
         unapproved-problems ($ "#unapproved-problems")
-        user-table ($ "user-table")]
+        user-table ($ "#user-table")]
     (.dataTable problem-table
                 (js-map
                   {"iDisplayLength" 25
-                   "aaSorting" (array (array 3 "desc"))
-                   "aoColumns" (array nil nil nil nil, (js-map {"sType" "string"}))}))
+                   "aaSorting" [[3 "desc"]]
+                   "aoColumns" [nil nil nil nil {"sType" "string"}]}))
     (.dataTable unapproved-problems
                 (js-map {"iDisplayLength" 25
-                         "aaSorting" (array (array 2 "desc"))
-                         "aoColumns" (js* "[null, null, null]")}))
+                         "aaSorting" [[2 "desc"]]
+                         "aoColumns" [nil nil nil]}))
     (.dataTable user-table
                 (js-map {"iDisplayLength" 25
-                         "aaSorting" (array (array 0 "desc"))
-                         "aoColumns" (js* "[null, null, null]")}))))
+                         "aaSorting" [[0 "asc"]]
+                         "aoColumns" [nil nil nil]}))))
 
 (defn configure-golf []
   (let []
@@ -133,12 +132,13 @@
 
 (defn configure-code-box []
   (let [old-box ($ "#code-box")]
-    (.replaceWith old-box
-                  (str "<div id=\"code-div\">"
-                       "<pre id=\"editor\">"
-                       (. old-box (val))
-                       "</pre></div>"
-                       "<input type=\"hidden\" value=\"blank\" name=\"code\" id=\"code\">"))
+    (if-not (zero? (.length old-box)) 
+      (.replaceWith old-box
+                    (str "<div id=\"code-div\">"
+                         "<pre id=\"editor\">"
+                         (. old-box (val))
+                         "</pre></div>"
+                         "<input type=\"hidden\" value=\"blank\" name=\"code\" id=\"code\">"))) 
     (when-not (zero? (.length ($ "#run-button")))
       (set! editor (.edit ace "editor"))
       (set! session (. editor (getSession)))
