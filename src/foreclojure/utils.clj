@@ -125,7 +125,9 @@
        [:link {:rel "alternate" :type "application/atom+xml" :title "Atom" :href "http://4clojure.com/problems/rss"}]
        [:link {:rel "shortcut icon" :href "/favicon.ico"}]
        (include-js "/vendor/script/jquery-1.5.2.min.js" "/vendor/script/jquery.dataTables.min.js")
-       (include-js "/script/foreclojure.js")
+       (include-js "/script/cljs/out/goog/base.js")
+       (include-js "/script/cljs/foreclojure.js")
+       ;(include-js "/script/foreclojure.js")
        (include-js "/vendor/script/xregexp.js" "/vendor/script/shCore.js" "/vendor/script/shBrushClojure.js")
        (include-js "/vendor/script/ace/ace.js" "/vendor/script/ace/mode-clojure.js")
        (include-css "/css/style.css" "/css/demo_table.css" "/css/shCore.css" "/css/shThemeDefault.css")
@@ -133,6 +135,7 @@
         ".syntaxhighlighter { overflow-y: hidden !important; }"]]
       [:script {:type "text/javascript"} "SyntaxHighlighter.all()"]
       [:body
+       (javascript-tag "goog.require('foreclojure.core')")
        [:div#top
         (link-to "/" [:img#logo {:src "/images/logo.png"}])]
        [:div#content
