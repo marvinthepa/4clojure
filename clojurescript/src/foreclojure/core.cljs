@@ -63,9 +63,73 @@
   (.hide ($ "#golfgraph") "fast")
   (.html ($ "#graph-link") "View Chart"))
 
-(def wait-time-per-item 500 )
+(def wait-time-per-item 500)
 (def wait-time wait-time-per-item) ; TODO change to local val
 (def cont true)
+(def editor)
+(def session)
+
+(defn click-handler []
+  (let [text (. session (getValue))
+        id (.attr ($ "#id") "value")
+        images (.find ($ ".testcases") "img")
+        animation-time 800
+        before-send (fn [data]
+                      (set! cont true)
+                      (let [anim (fn anim [high]
+                                   (when cont
+                                     (.animate images
+                                               (js-map {"opacity" (if high 1.0 0.1)})
+                                               animation-time)
+                                     (set-timeout (fn [] (anim (not high))))
+                                     ))]
+                        (.each images (fn [index element]
+                                        (set-icon-color element "blue")))
+                        (.text ($ "#message-text")
+                               "Executing unit tests...")
+                        (set-timeout change-to-code-view 0)
+                        (set-timeout (fn [] (anim false)))
+                        ))
+        error (fn [data string error]
+                (.text
+                  ($ "#message-text")
+                  (str "An Error occured: " error)))
+        success (fn [data]
+                  (let [failing-test (.failingTest data)
+                        get-color-for (fn [index]
+                                        (if (= index failing-test)
+                                          "red" "green"))
+                        test-was-executed (fn [index]
+                                            (<= index failing-test))
+                        set-color (fn [index element]
+                                    (let [color (get-color-for index)]
+                                      (set! wait-time (* wait-time-per-item (inc index)))
+                                      (set-icon-color element color wait-time)))
+                        set-messages (fn []
+                                       (.html ($ "#message-text") (.message data))
+                                       (.html ($ "#golfgraph") (.golfChart data))
+                                       (.html ($ "#golfscore") (.golfScore data))
+                                       (configure-golf))
+                        stop-animation (fn []
+                                         (set! cont false)
+                                         (.stop images true)
+                                         (.css images (js-map {"opacity" 1.0})))
+                        ]
+                    (set-timeout stop-animation 0)
+                    (.each
+                      (.filter images test-was-executed)
+                      set-color)
+                    (set-timeout set-messages wait-time)))]
+    (.ajax $ (js-map
+               {"type" "POST"
+                "url" (str "/rest/problem/" id)
+                "dataType" "json"
+                "data" (js-map {"id" id "code" text})
+                "timeout" 20000 ; default clojail timeout is 10000
+                "beforeSend" before-send
+                "success" success
+                "error" error}))
+    false))
 
 (defn configure-code-box []
   (let [old-box ($ "#code-box")]
@@ -76,74 +140,10 @@
                        "</pre></div>"
                        "<input type=\"hidden\" value=\"blank\" name=\"code\" id=\"code\">"))
     (when-not (zero? (.length ($ "#run-button")))
-      (let [editor (.edit ace "editor")
-            clojure-mode (.Mode (js-require "ace/mode/clojure"))
-            session (.getSession editor ())
-            click-handler (fn []
-                            (let [text (. session (getValue))
-                                  id (.attr ($ "#id") "value")
-                                  images (.find ($ ".testcases") "img")
-                                  animation-time 800
-                                  before-send (fn [data]
-                                                (set! cont true)
-                                                (let [anim (fn anim [high]
-                                                             (when cont
-                                                               (.animate images
-                                                                         (js-map {"opacity" (if high 1.0 0.1)})
-                                                                         animation-time)
-                                                               (set-timeout (fn [] (anim (not high))))
-                                                               ))]
-                                                  (.each images (fn [index element]
-                                                                  (set-icon-color element "blue")))
-                                                  (.text ($ "#message-text")
-                                                         "Executing unit tests...")
-                                                  (set-timeout change-to-code-view 0)
-                                                  (set-timeout (fn [] (anim false)))
-                                                  ))
-                                  error (fn [data string error]
-                                          (.text
-                                            ($ "#message-text")
-                                            (str "An Error occured: " error)))
-                                  success (fn [data]
-                                            (let [failing-test (.failingTest data)
-                                                  get-color-for (fn [index]
-                                                                  (if (= index failing-test)
-                                                                    "red" "green"))
-                                                  test-was-executed (fn [index]
-                                                                      (<= index failing-test))
-                                                  set-color (fn [index element]
-                                                              (let [color (get-color-for index)]
-                                                                (set! wait-time (* wait-time-per-item (inc index)))
-                                                                (set-icon-color element color wait-time)))
-                                                  set-messages (fn []
-                                                                 (.html ($ "#message-text") (.message data))
-                                                                 (.html ($ "#golfgraph") (.golfChart data))
-                                                                 (.html ($ "#golfscore") (.golfScore data))
-                                                                 (configure-golf))
-                                                  stop-animation (fn []
-                                                                   (set! cont false)
-                                                                   (.stop images true)
-                                                                   (.css images (js-map {"opacity" 1.0})))
-                                                  ]
-                                              (set-timeout stop-animation 0)
-                                              (.each
-                                                (.filter images test-was-executed)
-                                                set-color)
-                                              (set-timeout set-messages wait-time)
-                                              )
-                                            )]
-                              (.ajax $ (js-map
-                                         {"type" "POST"
-                                          "url" (str "/rest/problem/" id)
-                                          "dataType" "json"
-                                          "data" (js-map {"id" id "code" text})
-                                          "timeout" 20000 ; default clojail timeout is 10000
-                                          "beforeSend" before-send
-                                          "success" success
-                                          "error" error}))
-                            false))]
+      (set! editor (.edit ace "editor"))
+      (set! session (. editor (getSession)))
+      (let [clojure-mode (.Mode (js-require "ace/mode/clojure"))]
         (.setTheme editor "ace/theme/textmate")
-        (.click ($ "#run-button") click-handler)
         (doto session
           (.setMode (clojure-mode.))
           (.setUseSoftTabs true)
@@ -153,7 +153,8 @@
             (.getElementById "editor")
             .style
             .fontSize)
-          13)))))
+          13)
+        (.click ($ "#run-button") click-handler)))))
 
 (defn on-document-ready []
   (configure-data-tables)
