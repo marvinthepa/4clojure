@@ -78,17 +78,15 @@
                       (let [anim (fn anim [high]
                                    (when cont
                                      (.animate images
-                                               (js-map {"opacity" (if high 1.0 0.1)})
+                                               (js-map {"opacity" (if high 0.0 0.1)})
                                                animation-time)
-                                     (set-timeout (fn [] (anim (not high))))
-                                     ))]
+                                     (set-timeout (fn [] (anim (not high))))))]
                         (.each images (fn [index element]
                                         (set-icon-color element "blue")))
                         (.text ($ "#message-text")
                                "Executing unit tests...")
                         (set-timeout change-to-code-view 0)
-                        (set-timeout (fn [] (anim false)))
-                        ))
+                        (set-timeout (fn [] (anim false)))))
         error (fn [data string error]
                 (.text
                   ($ "#message-text")
@@ -112,8 +110,7 @@
                         stop-animation (fn []
                                          (set! cont false)
                                          (.stop images true)
-                                         (.css images (js-map {"opacity" 1.0})))
-                        ]
+                                         (.css images (js-map {"opacity" 1.0})))]
                     (set-timeout stop-animation 0)
                     (.each
                       (.filter images test-was-executed)
@@ -162,30 +159,30 @@
   (configure-golf)
 
   (.live ($ "form#run-code button#approve-button")
-    "click"
-    (fn [e]
-      (. e (preventDefault))
-      (when (confirm "Are you sure you want to mark this problem as approved?")
-        (-> (.parents ($ this) "form")
-          (.attr "action" "/problem/approve")
-          (.submit)))))
+         "click"
+         (fn [e]
+           (. e (preventDefault))
+           (when (confirm "Are you sure you want to mark this problem as approved?")
+             (-> (.parents ($ this) "form")
+               (.attr "action" "/problem/approve")
+               (.submit)))))
 
   (.live ($ "form#run-code button#reject-button")
-    "click"
-    (fn [e]
-      (. e (preventDefault))
-      (when (confirm "Are you sure you want to reject this problem? It will be permanently deleted.")
-        (-> (.parents ($ this) "form")
-          (.attr "action" "/problem/reject")
-          (.submit)))))
+         "click"
+         (fn [e]
+           (. e (preventDefault))
+           (when (confirm "Are you sure you want to reject this problem? It will be permanently deleted.")
+             (-> (.parents ($ this) "form")
+               (.attr "action" "/problem/reject")
+               (.submit)))))
 
   (.live ($ "form#run-code button#edit-button")
-    "click"
-    (fn [e]
-      (. e (preventDefault))
-      (-> (.parents ($ this) "form")
-        (.attr "action" "/problem/edit")
-        (.submit)))))
+         "click"
+         (fn [e]
+           (. e (preventDefault))
+           (-> (.parents ($ this) "form")
+             (.attr "action" "/problem/edit")
+             (.submit)))))
 
 (-> ($ document)
   (.ready on-document-ready))
